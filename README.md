@@ -376,7 +376,3 @@ kubectl delete namespace monitoring
 ```
 
 ---
-
-## Contact
-
-recrutement@boaz-study.com
