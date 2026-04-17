@@ -1,0 +1,45 @@
+version: "3.9"
+
+networks:
+  infraflow-net:
+    driver: bridge
+
+services:
+  api-service:
+    build:
+      context: ./api-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_OWNER:-infraflow}/api-service:${IMAGE_TAG:-latest}
+    container_name: api-service
+    restart: unless-stopped
+    networks:
+      - infraflow-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/get"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    expose:
+      - "8080"
+
+  web-service:
+    build:
+      context: ./web-service
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_OWNER:-infraflow}/web-service:${IMAGE_TAG:-latest}
+    container_name: web-service
+    restart: unless-stopped
+    networks:
+      - infraflow-net
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

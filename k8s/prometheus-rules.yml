@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: infraflow-alerts
+  namespace: infraflow
+  labels:
+    release: monitoring
+    app: kube-prometheus-stack
+spec:
+  groups:
+    - name: infraflow.rules
+      interval: 30s
+      rules:
+        - alert: PodDown
+          expr: |
+            kube_pod_status_ready{namespace="infraflow", condition="true"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            namespace: infraflow
+          annotations:
+            summary: "Pod {{ $labels.pod }} is down"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 1 minute."
+
+        - alert: HighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{namespace="infraflow"}[5m])) by (pod)
+              / sum(kube_pod_container_resource_limits{namespace="infraflow", resource="cpu"}) by (pod) > 0.8
+          for: 2m
+          labels:
+            severity: warning
+            namespace: infraflow
+          annotations:
+            summary: "High CPU usage on pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} CPU usage is above 80% for more than 2 minutes."
+
+        - alert: HighMemoryUsage
+          expr: |
+            sum(container_memory_working_set_bytes{namespace="infraflow"}) by (pod)
+              / sum(kube_pod_container_resource_limits{namespace="infraflow", resource="memory"}) by (pod) > 0.85
+          for: 2m
+          labels:
+            severity: warning
+            namespace: infraflow
+          annotations:
+            summary: "High memory usage on pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} memory usage is above 85% for more than 2 minutes."
